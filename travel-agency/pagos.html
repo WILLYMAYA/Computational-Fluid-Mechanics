@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pago seguro — Viajes Horizonte</title>
+<style>
+  :root {
+    --primary: #0e7490;
+    --primary-dark: #155e75;
+    --accent: #f59e0b;
+    --bg: #f1f5f9;
+    --surface: #ffffff;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --error: #dc2626;
+    --success: #16a34a;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    color: #fff;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo { font-size: 1.35rem; font-weight: 700; letter-spacing: 0.5px; }
+  .logo span { color: var(--accent); }
+
+  .secure-badge {
+    font-size: 0.85rem;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+  }
+
+  main {
+    max-width: 1060px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  @media (max-width: 860px) {
+    main { grid-template-columns: 1fr; }
+    .summary { order: -1; }
+  }
+
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    padding: 1.5rem;
+  }
+
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
+
+  .section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 1.5rem 0 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-title:first-of-type { margin-top: 0; }
+
+  .step-num {
+    background: var(--primary);
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .methods { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+
+  .method-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 0.75rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .method-btn.active {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: #ecfeff;
+  }
+
+  .field { margin-bottom: 1rem; }
+
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; }
+
+  input, select {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: var(--surface);
+    transition: border-color 0.15s;
+  }
+
+  input:focus, select:focus { outline: none; border-color: var(--primary); }
+  input.invalid, select.invalid { border-color: var(--error); }
+
+  .error-msg { display: none; color: var(--error); font-size: 0.8rem; margin-top: 0.3rem; }
+  input.invalid ~ .error-msg, select.invalid ~ .error-msg { display: block; }
+
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .row .field { flex: 1; min-width: 140px; }
+
+  .card-number-wrap { position: relative; }
+  .card-brand {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+
+  /* Contenedor de Stripe Elements (modo real) */
+  #stripe-card-container { display: none; }
+  #stripe-card-element {
+    padding: 0.85rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  #stripe-card-errors { color: var(--error); font-size: 0.8rem; margin-top: 0.4rem; }
+
+  .terms {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin: 1.25rem 0 0.5rem;
+    font-size: 0.87rem;
+    line-height: 1.5;
+  }
+  .terms input { width: auto; margin-top: 0.2rem; }
+  .terms a { color: var(--primary); }
+  .terms.invalid { color: var(--error); }
+
+  .pay-btn {
+    width: 100%;
+    padding: 0.9rem;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--primary);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-top: 0.75rem;
+  }
+
+  .pay-btn:hover { background: var(--primary-dark); }
+  .pay-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+  .global-error {
+    display: none;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: var(--error);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+  }
+  .global-error.visible { display: block; }
+
+  .alt-method { display: none; }
+  .alt-method p { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem; line-height: 1.5; }
+  .alt-method .info-box {
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    margin-bottom: 1rem;
+  }
+
+  .mode-banner {
+    display: none;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+  .mode-banner.visible { display: block; }
+
+  /* Resumen de reserva */
+  .summary h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+
+  .trip {
+    display: flex;
+    gap: 0.85rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+
+  .trip-icon {
+    font-size: 1.8rem;
+    background: #ecfeff;
+    border-radius: 10px;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .trip-name { font-weight: 700; }
+  .trip-detail { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem; }
+
+  .summary-selectors { margin-bottom: 1rem; }
+  .summary-selectors .field { margin-bottom: 0.75rem; }
+
+  .price-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    padding: 0.3rem 0;
+  }
+
+  .price-line.total {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+    border-top: 1px solid var(--border);
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+  }
+
+  .trust {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* Pantalla de éxito / recibo */
+  .success-screen { display: none; }
+  .success-screen.visible { display: block; }
+
+  .success-head { text-align: center; padding: 1.5rem 0; }
+
+  .success-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #dcfce7;
+    color: var(--success);
+    font-size: 2.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+  }
+
+  .success-head h2 { margin-bottom: 0.5rem; }
+  .success-head p { color: var(--text-muted); }
+
+  .receipt {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-top: 1.25rem;
+    font-size: 0.92rem;
+  }
+  .receipt h3 { font-size: 1rem; margin-bottom: 0.75rem; }
+  .receipt-line { display: flex; justify-content: space-between; padding: 0.25rem 0; }
+  .receipt-line span:first-child { color: var(--text-muted); }
+  .receipt-line.strong span { color: var(--text); font-weight: 700; }
+  .receipt hr { border: none; border-top: 1px solid var(--border); margin: 0.75rem 0; }
+
+  .print-btn {
+    margin-top: 1.25rem;
+    width: 100%;
+    padding: 0.8rem;
+    border: 1.5px solid var(--primary);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    padding: 2rem 1rem;
+  }
+
+  /* Modal de términos */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 50;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-backdrop.visible { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    max-width: 560px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+  }
+  .modal h3 { margin-bottom: 0.75rem; }
+  .modal p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 0.75rem; }
+  .modal button { margin-top: 0.5rem; }
+
+  @media print {
+    header, footer, .summary, .print-btn, .secure-badge { display: none !important; }
+    body { background: #fff; }
+    main { display: block; margin: 0; max-width: none; }
+    .card { box-shadow: none; padding: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">✈️ Viajes <span>Horizonte</span></div>
+  <div class="secure-badge">🔒 Pago seguro SSL</div>
+</header>
+
+<main>
+  <!-- Formulario de pago -->
+  <section class="card" id="payment-card">
+    <div id="payment-form-view">
+      <h1>Finalizar compra</h1>
+      <p class="subtitle">Completa los datos para confirmar tu reserva.</p>
+
+      <div class="mode-banner" id="mode-banner">
+        ⚠️ Modo demostración: el servidor de pagos no está configurado, no se procesarán cargos reales.
+      </div>
+
+      <form id="checkout-form" novalidate>
+
+        <!-- 1. Datos del viajero -->
+        <div class="section-title"><span class="step-num">1</span> Datos del viajero principal</div>
+
+        <div class="row">
+          <div class="field">
+            <label for="nombre">Nombre</label>
+            <input type="text" id="nombre" autocomplete="given-name" required>
+            <p class="error-msg">Introduce tu nombre.</p>
+          </div>
+          <div class="field">
+            <label for="apellidos">Apellidos</label>
+            <input type="text" id="apellidos" autocomplete="family-name" required>
+            <p class="error-msg">Introduce tus apellidos.</p>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="documento">DNI / Pasaporte</label>
+            <input type="text" id="documento" placeholder="12345678Z" required>
+            <p class="error-msg">Introduce un documento válido (mín. 5 caracteres).</p>
+          </div>
+          <div class="field">
+            <label for="telefono">Teléfono</label>
+            <input type="tel" id="telefono" placeholder="+34 600 000 000" autocomplete="tel" required>
+            <p class="error-msg">Introduce un teléfono válido.</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="email">Correo electrónico (recibo y billetes)</label>
+          <input type="email" id="email" placeholder="tu@correo.com" autocomplete="email" required>
+          <p class="error-msg">Introduce un correo válido.</p>
+        </div>
+
+        <!-- 2. Dirección de facturación -->
+        <div class="section-title"><span class="step-num">2</span> Dirección de facturación</div>
+
+        <div class="field">
+          <label for="direccion">Dirección</label>
+          <input type="text" id="direccion" placeholder="Calle, número, piso" autocomplete="street-address" required>
+          <p class="error-msg">Introduce tu dirección.</p>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="ciudad">Ciudad</label>
+            <input type="text" id="ciudad" autocomplete="address-level2" required>
+            <p class="error-msg">Introduce tu ciudad.</p>
+          </div>
+          <div class="field">
+            <label for="cp">Código postal</label>
+            <input type="text" id="cp" inputmode="numeric" autocomplete="postal-code" required>
+            <p class="error-msg">Código postal no válido.</p>
+          </div>
+          <div class="field">
+            <label for="pais">País</label>
+            <select id="pais" autocomplete="country" required>
+              <option value="ES" selected>España</option>
+              <option value="MX">México</option>
+              <option value="AR">Argentina</option>
+              <option value="CO">Colombia</option>
+              <option value="CL">Chile</option>
+              <option value="PE">Perú</option>
+              <option value="US">Estados Unidos</option>
+              <option value="FR">Francia</option>
+              <option value="DE">Alemania</option>
+              <option value="IT">Italia</option>
+              <option value="PT">Portugal</option>
+              <option value="GB">Reino Unido</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 3. Método de pago -->
+        <div class="section-title"><span class="step-num">3</span> Método de pago</div>
+
+        <div class="methods" role="tablist">
+          <button type="button" class="method-btn active" data-method="tarjeta">💳 Tarjeta</button>
+          <button type="button" class="method-btn" data-method="paypal">🅿️ PayPal</button>
+          <button type="button" class="method-btn" data-method="transferencia">🏦 Transferencia</button>
+        </div>
+
+        <!-- Tarjeta: campos propios (modo demo) -->
+        <div id="tarjeta-method">
+          <div id="demo-card-fields">
+            <div class="field">
+              <label for="holder">Titular de la tarjeta</label>
+              <input type="text" id="holder" placeholder="Como aparece en la tarjeta" autocomplete="cc-name">
+              <p class="error-msg">Introduce el nombre del titular.</p>
+            </div>
+
+            <div class="field">
+              <label for="card-number">Número de tarjeta</label>
+              <div class="card-number-wrap">
+                <input type="text" id="card-number" placeholder="1234 5678 9012 3456" inputmode="numeric" autocomplete="cc-number" maxlength="19">
+                <span class="card-brand" id="card-brand"></span>
+              </div>
+              <p class="error-msg">Número de tarjeta no válido.</p>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="expiry">Caducidad</label>
+                <input type="text" id="expiry" placeholder="MM/AA" inputmode="numeric" autocomplete="cc-exp" maxlength="5">
+                <p class="error-msg">Fecha no válida o caducada.</p>
+              </div>
+              <div class="field">
+                <label for="cvv">CVV</label>
+                <input type="password" id="cvv" placeholder="•••" inputmode="numeric" autocomplete="cc-csc" maxlength="4">
+                <p class="error-msg">CVV no válido.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarjeta: Stripe Elements (modo real) -->
+          <div id="stripe-card-container">
+            <div class="field">
+              <label for="holder-stripe">Titular de la tarjeta</label>
+              <input type="text" id="holder-stripe" placeholder="Como aparece en la tarjeta" autocomplete="cc-name">
+              <p class="error-msg">Introduce el nombre del titular.</p>
+            </div>
+            <div class="field">
+              <label>Datos de la tarjeta</label>
+              <div id="stripe-card-element"></div>
+              <div id="stripe-card-errors" role="alert"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PayPal -->
+        <div class="alt-method" id="paypal-method">
+          <p>Serás redirigido a PayPal para completar el pago de forma segura. Una vez confirmado, volverás a esta página con tu reserva finalizada.</p>
+        </div>
+
+        <!-- Transferencia -->
+        <div class="alt-method" id="transferencia-method">
+          <p>Realiza una transferencia bancaria con los siguientes datos. Tu reserva quedará confirmada al recibir el pago (1–2 días laborables).</p>
+          <div class="info-box">
+            <strong>Beneficiario:</strong> Viajes Horizonte S.L.<br>
+            <strong>IBAN:</strong> ES12 3456 7890 1234 5678 9012<br>
+            <strong>BIC/SWIFT:</strong> HORIESMM<br>
+            <strong>Concepto:</strong> tu referencia de reserva (se genera al confirmar)<br>
+            <strong>Importe:</strong> <span class="importe-transferencia">—</span>
+          </div>
+        </div>
+
+        <!-- 4. Términos y pago -->
+        <label class="terms" id="terms-label">
+          <input type="checkbox" id="terms">
+          <span>He leído y acepto los <a href="#" id="open-terms">términos y condiciones</a> y la <a href="#" id="open-privacy">política de privacidad</a>, y confirmo que los datos de los viajeros son correctos.</span>
+        </label>
+
+        <button type="submit" class="pay-btn" id="pay-btn">Pagar</button>
+        <div class="global-error" id="global-error"></div>
+      </form>
+    </div>
+
+    <!-- Pantalla de confirmación / recibo -->
+    <div class="success-screen" id="success-screen">
+      <div class="success-head">
+        <div class="success-icon">✓</div>
+        <h2 id="success-title">¡Pago confirmado!</h2>
+        <p id="success-subtitle">Tu reserva ha sido procesada correctamente.</p>
+      </div>
+
+      <div class="receipt" id="receipt">
+        <h3>Recibo de compra</h3>
+        <div class="receipt-line strong"><span>Referencia</span><span id="r-ref">—</span></div>
+        <div class="receipt-line"><span>Fecha</span><span id="r-fecha">—</span></div>
+        <div class="receipt-line"><span>Método de pago</span><span id="r-metodo">—</span></div>
+        <div class="receipt-line"><span>Estado</span><span id="r-estado">—</span></div>
+        <hr>
+        <div class="receipt-line"><span>Cliente</span><span id="r-cliente">—</span></div>
+        <div class="receipt-line"><span>Documento</span><span id="r-documento">—</span></div>
+        <div class="receipt-line"><span>Correo</span><span id="r-email">—</span></div>
+        <hr>
+        <div class="receipt-line"><span>Paquete</span><span id="r-paquete">—</span></div>
+        <div class="receipt-line"><span>Fechas</span><span id="r-fechas">—</span></div>
+        <div class="receipt-line"><span>Viajeros</span><span id="r-viajeros">—</span></div>
+        <div id="r-desglose"></div>
+        <hr>
+        <div class="receipt-line strong"><span>Total pagado</span><span id="r-total">—</span></div>
+      </div>
+
+      <p style="margin-top:1rem; color:var(--text-muted); font-size:0.9rem; text-align:center">
+        Hemos enviado el recibo y los detalles del viaje a tu correo electrónico.
+      </p>
+      <button type="button" class="print-btn" onclick="window.print()">🖨️ Imprimir / guardar recibo en PDF</button>
+    </div>
+  </section>
+
+  <!-- Resumen de la reserva -->
+  <aside class="card summary">
+    <h2>Resumen de tu reserva</h2>
+
+    <div class="summary-selectors" id="summary-selectors">
+      <div class="field">
+        <label for="paquete-select">Paquete</label>
+        <select id="paquete-select"></select>
+      </div>
+      <div class="field">
+        <label for="adultos-select">Viajeros (adultos)</label>
+        <select id="adultos-select">
+          <option value="1">1 adulto</option>
+          <option value="2" selected>2 adultos</option>
+          <option value="3">3 adultos</option>
+          <option value="4">4 adultos</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="trip">
+      <div class="trip-icon" id="trip-icon">🏝️</div>
+      <div>
+        <div class="trip-name" id="trip-name">—</div>
+        <div class="trip-detail" id="trip-hotel">—</div>
+        <div class="trip-detail" id="trip-fechas">—</div>
+      </div>
+    </div>
+
+    <div id="price-breakdown"></div>
+    <div class="price-line total"><span>Total</span><span id="price-total">—</span></div>
+
+    <p class="trust">
+      🔒 Tus datos se transmiten cifrados.<br>
+      Cancelación gratuita hasta 48 h antes de la salida.
+    </p>
+  </aside>
+</main>
+
+<footer>
+  © 2026 Viajes Horizonte S.L. · CIF B-12345678 · C/ del Mar 24, 28001 Madrid ·
+  <a href="#" id="open-terms-footer" style="color:var(--text-muted)">Términos y condiciones</a>
+</footer>
+
+<!-- Modal de términos / privacidad -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="modal-title">Términos y condiciones</h3>
+    <div id="modal-body"></div>
+    <button type="button" class="pay-btn" id="modal-close">Cerrar</button>
+  </div>
+</div>
+
+<script>
+  'use strict';
+
+  // ============================================================
+  // Catálogo de paquetes.
+  // IMPORTANTE: debe mantenerse sincronizado con el catálogo del
+  // servidor (server/catalogo.js), que es la fuente de verdad
+  // para los importes que se cobran.
+  // ============================================================
+  const CATALOGO = {
+    'cancun': {
+      nombre: 'Cancún — Todo incluido',
+      icono: '🏝️',
+      hotel: 'Hotel Playa Azul ★★★★',
+      noches: 7,
+      salida: '15 ago 2026',
+      regreso: '22 ago 2026',
+      precios: {
+        vueloPorPersona: 36000,     // céntimos de euro
+        hotelPorNoche: 14000,
+        traslados: 6000,
+        seguroPorPersona: 2250,
+        tasasPorPersona: 2100
+      }
+    },
+    'riviera-maya': {
+      nombre: 'Riviera Maya — Aventura y playa',
+      icono: '🐠',
+      hotel: 'Resort Xcaret Coral ★★★★★',
+      noches: 9,
+      salida: '5 sep 2026',
+      regreso: '14 sep 2026',
+      precios: {
+        vueloPorPersona: 41000,
+        hotelPorNoche: 17500,
+        traslados: 7000,
+        seguroPorPersona: 2550,
+        tasasPorPersona: 2400
+      }
+    },
+    'patagonia': {
+      nombre: 'Patagonia — Glaciares y montañas',
+      icono: '🏔️',
+      hotel: 'Lodge Fitz Roy ★★★★',
+      noches: 10,
+      salida: '3 nov 2026',
+      regreso: '13 nov 2026',
+      precios: {
+        vueloPorPersona: 78000,
+        hotelPorNoche: 16000,
+        traslados: 9000,
+        seguroPorPersona: 3100,
+        tasasPorPersona: 3300
+      }
+    }
+  };
+
+  const fmtEUR = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+  const eur = cents => fmtEUR.format(cents / 100);
+
+  function desglose(paqueteId, adultos) {
+    const p = CATALOGO[paqueteId].precios;
+    const n = CATALOGO[paqueteId].noches;
+    return [
+      { concepto: `Vuelos (${adultos} ${adultos === 1 ? 'pasajero' : 'pasajeros'})`, importe: p.vueloPorPersona * adultos },
+      { concepto: `Hotel (${n} noches)`, importe: p.hotelPorNoche * n },
+      { concepto: 'Traslados aeropuerto', importe: p.traslados },
+      { concepto: 'Seguro de viaje', importe: p.seguroPorPersona * adultos },
+      { concepto: 'Tasas e impuestos', importe: p.tasasPorPersona * adultos }
+    ];
+  }
+
+  function totalCents(paqueteId, adultos) {
+    return desglose(paqueteId, adultos).reduce((sum, l) => sum + l.importe, 0);
+  }
+
+  // ============================================================
+  // Estado: paquete y viajeros (inicializables por URL:
+  // pagos.html?paquete=riviera-maya&adultos=3)
+  // ============================================================
+  const urlParams = new URLSearchParams(location.search);
+  let paqueteActual = CATALOGO[urlParams.get('paquete')] ? urlParams.get('paquete') : 'cancun';
+  let adultosActual = Math.min(4, Math.max(1, parseInt(urlParams.get('adultos'), 10) || 2));
+
+  const paqueteSelect = document.getElementById('paquete-select');
+  const adultosSelect = document.getElementById('adultos-select');
+
+  for (const [id, p] of Object.entries(CATALOGO)) {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = p.nombre;
+    paqueteSelect.appendChild(opt);
+  }
+  paqueteSelect.value = paqueteActual;
+  adultosSelect.value = String(adultosActual);
+
+  function renderResumen() {
+    const p = CATALOGO[paqueteActual];
+    document.getElementById('trip-icon').textContent = p.icono;
+    document.getElementById('trip-name').textContent = p.nombre;
+    document.getElementById('trip-hotel').textContent = `${p.noches} noches · ${p.hotel}`;
+    document.getElementById('trip-fechas').textContent =
+      `${p.salida} → ${p.regreso} · ${adultosActual} ${adultosActual === 1 ? 'adulto' : 'adultos'}`;
+
+    const lineas = desglose(paqueteActual, adultosActual);
+    document.getElementById('price-breakdown').innerHTML = lineas
+      .map(l => `<div class="price-line"><span>${l.concepto}</span><span>${eur(l.importe)}</span></div>`)
+      .join('');
+
+    const total = totalCents(paqueteActual, adultosActual);
+    document.getElementById('price-total').textContent = eur(total);
+    document.querySelectorAll('.importe-transferencia').forEach(el => { el.textContent = eur(total); });
+    actualizarBotonPago();
+  }
+
+  function actualizarBotonPago() {
+    const total = eur(totalCents(paqueteActual, adultosActual));
+    const labels = {
+      tarjeta: `Pagar ${total}`,
+      paypal: 'Continuar con PayPal',
+      transferencia: 'Confirmar reserva por transferencia'
+    };
+    document.getElementById('pay-btn').textContent = labels[metodoActual];
+  }
+
+  paqueteSelect.addEventListener('change', () => { paqueteActual = paqueteSelect.value; renderResumen(); });
+  adultosSelect.addEventListener('change', () => { adultosActual = parseInt(adultosSelect.value, 10); renderResumen(); });
+
+  // ============================================================
+  // Métodos de pago
+  // ============================================================
+  let metodoActual = 'tarjeta';
+  const methodButtons = document.querySelectorAll('.method-btn');
+
+  methodButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      methodButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      metodoActual = btn.dataset.method;
+      document.getElementById('tarjeta-method').style.display = metodoActual === 'tarjeta' ? 'block' : 'none';
+      document.getElementById('paypal-method').style.display = metodoActual === 'paypal' ? 'block' : 'none';
+      document.getElementById('transferencia-method').style.display = metodoActual === 'transferencia' ? 'block' : 'none';
+      actualizarBotonPago();
+    });
+  });
+
+  // ============================================================
+  // Formateo y validación de la tarjeta (modo demo)
+  // ============================================================
+  const cardNumber = document.getElementById('card-number');
+  const cardBrand = document.getElementById('card-brand');
+
+  cardNumber.addEventListener('input', () => {
+    const digits = cardNumber.value.replace(/\D/g, '').slice(0, 16);
+    cardNumber.value = digits.replace(/(\d{4})(?=\d)/g, '$1 ');
+    if (/^4/.test(digits)) cardBrand.textContent = 'VISA';
+    else if (/^5[1-5]/.test(digits) || /^2[2-7]/.test(digits)) cardBrand.textContent = 'Mastercard';
+    else if (/^3[47]/.test(digits)) cardBrand.textContent = 'AMEX';
+    else cardBrand.textContent = '';
+  });
+
+  const expiry = document.getElementById('expiry');
+  expiry.addEventListener('input', () => {
+    const digits = expiry.value.replace(/\D/g, '').slice(0, 4);
+    expiry.value = digits.length > 2 ? digits.slice(0, 2) + '/' + digits.slice(2) : digits;
+  });
+
+  const cvv = document.getElementById('cvv');
+  cvv.addEventListener('input', () => {
+    cvv.value = cvv.value.replace(/\D/g, '').slice(0, 4);
+  });
+
+  function luhnValid(digits) {
+    let sum = 0, alt = false;
+    for (let i = digits.length - 1; i >= 0; i--) {
+      let n = parseInt(digits[i], 10);
+      if (alt) { n *= 2; if (n > 9) n -= 9; }
+      sum += n;
+      alt = !alt;
+    }
+    return digits.length >= 13 && sum % 10 === 0;
+  }
+
+  function expiryValid(value) {
+    const match = /^(\d{2})\/(\d{2})$/.exec(value);
+    if (!match) return false;
+    const month = parseInt(match[1], 10);
+    if (month < 1 || month > 12) return false;
+    const year = 2000 + parseInt(match[2], 10);
+    const now = new Date();
+    return new Date(year, month, 0) >= new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
+  function setValidity(input, valid) {
+    input.classList.toggle('invalid', !valid);
+    return valid;
+  }
+
+  // ============================================================
+  // Integración con el servidor de pagos (Stripe)
+  // Si /api/config responde con una clave publicable, se activa
+  // el modo real con Stripe Elements; si no, modo demostración.
+  // ============================================================
+  let modoReal = false;
+  let stripe = null;
+  let stripeCard = null;
+
+  async function initPasarela() {
+    try {
+      const res = await fetch('/api/config');
+      if (!res.ok) throw new Error('sin backend');
+      const cfg = await res.json();
+      if (!cfg.publishableKey) throw new Error('sin clave');
+
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://js.stripe.com/v3/';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+
+      stripe = Stripe(cfg.publishableKey);
+      stripeCard = stripe.elements().create('card', { hidePostalCode: true });
+      stripeCard.mount('#stripe-card-element');
+      stripeCard.on('change', ev => {
+        document.getElementById('stripe-card-errors').textContent = ev.error ? ev.error.message : '';
+      });
+
+      document.getElementById('demo-card-fields').style.display = 'none';
+      document.getElementById('stripe-card-container').style.display = 'block';
+      modoReal = true;
+    } catch (e) {
+      document.getElementById('mode-banner').classList.add('visible');
+    }
+  }
+  initPasarela();
+
+  // ============================================================
+  // Validación y envío del formulario
+  // ============================================================
+  const form = document.getElementById('checkout-form');
+  const payBtn = document.getElementById('pay-btn');
+  const globalError = document.getElementById('global-error');
+
+  const campos = {
+    nombre: document.getElementById('nombre'),
+    apellidos: document.getElementById('apellidos'),
+    documento: document.getElementById('documento'),
+    telefono: document.getElementById('telefono'),
+    email: document.getElementById('email'),
+    direccion: document.getElementById('direccion'),
+    ciudad: document.getElementById('ciudad'),
+    cp: document.getElementById('cp'),
+    holder: document.getElementById('holder'),
+    holderStripe: document.getElementById('holder-stripe'),
+    terms: document.getElementById('terms')
+  };
+
+  function validarDatosCliente() {
+    let ok = true;
+    ok = setValidity(campos.nombre, campos.nombre.value.trim().length >= 2) && ok;
+    ok = setValidity(campos.apellidos, campos.apellidos.value.trim().length >= 2) && ok;
+    ok = setValidity(campos.documento, campos.documento.value.trim().length >= 5) && ok;
+    ok = setValidity(campos.telefono, /^[+\d][\d\s().-]{6,18}$/.test(campos.telefono.value.trim())) && ok;
+    ok = setValidity(campos.email, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(campos.email.value.trim())) && ok;
+    ok = setValidity(campos.direccion, campos.direccion.value.trim().length >= 5) && ok;
+    ok = setValidity(campos.ciudad, campos.ciudad.value.trim().length >= 2) && ok;
+    ok = setValidity(campos.cp, /^[\dA-Za-z][\dA-Za-z\s-]{2,9}$/.test(campos.cp.value.trim())) && ok;
+
+    const termsOk = campos.terms.checked;
+    document.getElementById('terms-label').classList.toggle('invalid', !termsOk);
+    return ok && termsOk;
+  }
+
+  function validarTarjetaDemo() {
+    let ok = true;
+    ok = setValidity(campos.holder, campos.holder.value.trim().length >= 3) && ok;
+    ok = setValidity(cardNumber, luhnValid(cardNumber.value.replace(/\D/g, ''))) && ok;
+    ok = setValidity(expiry, expiryValid(expiry.value)) && ok;
+    ok = setValidity(cvv, /^\d{3,4}$/.test(cvv.value)) && ok;
+    return ok;
+  }
+
+  function datosCliente() {
+    return {
+      nombre: campos.nombre.value.trim(),
+      apellidos: campos.apellidos.value.trim(),
+      documento: campos.documento.value.trim(),
+      telefono: campos.telefono.value.trim(),
+      email: campos.email.value.trim(),
+      direccion: campos.direccion.value.trim(),
+      ciudad: campos.ciudad.value.trim(),
+      cp: campos.cp.value.trim(),
+      pais: document.getElementById('pais').value
+    };
+  }
+
+  function mostrarError(msg) {
+    globalError.textContent = msg;
+    globalError.classList.add('visible');
+  }
+
+  function refLocal() {
+    return 'VH-' + new Date().getFullYear() + '-' + String(Math.floor(1000 + Math.random() * 9000));
+  }
+
+  async function crearPedido(metodo) {
+    // Con backend: el servidor calcula el importe y genera la referencia.
+    const res = await fetch('/api/pedidos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        paquete: paqueteActual,
+        adultos: adultosActual,
+        metodo,
+        cliente: datosCliente()
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudo crear el pedido. Inténtalo de nuevo.');
+    }
+    return res.json();
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    globalError.classList.remove('visible');
+
+    if (!validarDatosCliente()) {
+      const primerInvalido = form.querySelector('.invalid, .terms.invalid');
+      if (primerInvalido) primerInvalido.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (metodoActual === 'tarjeta') {
+      if (modoReal) {
+        if (!setValidity(campos.holderStripe, campos.holderStripe.value.trim().length >= 3)) return;
+      } else if (!validarTarjetaDemo()) {
+        return;
+      }
+    }
+
+    payBtn.disabled = true;
+    payBtn.textContent = 'Procesando…';
+
+    try {
+      if (modoReal) {
+        const pedido = await crearPedido(metodoActual);
+
+        if (metodoActual === 'tarjeta') {
+          const c = datosCliente();
+          const result = await stripe.confirmCardPayment(pedido.clientSecret, {
+            payment_method: {
+              card: stripeCard,
+              billing_details: {
+                name: campos.holderStripe.value.trim(),
+                email: c.email,
+                address: { line1: c.direccion, city: c.ciudad, postal_code: c.cp, country: c.pais }
+              }
+            }
+          });
+          if (result.error) throw new Error(result.error.message);
+          await fetch('/api/pedidos/' + pedido.referencia + '/confirmar', { method: 'POST' })
+            .catch(() => {}); // el webhook de Stripe es la confirmación autoritativa
+          mostrarExito(pedido.referencia, 'Tarjeta', 'Pagado');
+        } else if (metodoActual === 'transferencia') {
+          mostrarExito(pedido.referencia, 'Transferencia bancaria', 'Pendiente de recibir transferencia');
+        } else {
+          // PayPal requiere configurar la cuenta de comercio (ver README).
+          throw new Error('El pago con PayPal aún no está habilitado. Usa tarjeta o transferencia.');
+        }
+      } else {
+        // Modo demostración: simula el procesamiento.
+        await new Promise(r => setTimeout(r, 1200));
+        const estados = {
+          tarjeta: ['Tarjeta', 'Pagado (demo)'],
+          paypal: ['PayPal', 'Pagado (demo)'],
+          transferencia: ['Transferencia bancaria', 'Pendiente de recibir transferencia (demo)']
+        };
+        mostrarExito(refLocal(), estados[metodoActual][0], estados[metodoActual][1]);
+      }
+    } catch (err) {
+      mostrarError(err.message || 'Se produjo un error al procesar el pago.');
+      payBtn.disabled = false;
+      actualizarBotonPago();
+    }
+  });
+
+  // ============================================================
+  // Pantalla de confirmación y recibo
+  // ============================================================
+  function mostrarExito(referencia, metodo, estado) {
+    const p = CATALOGO[paqueteActual];
+    const c = datosCliente();
+    const esPendiente = estado.startsWith('Pendiente');
+
+    document.getElementById('success-title').textContent = esPendiente ? '¡Reserva registrada!' : '¡Pago confirmado!';
+    document.getElementById('success-subtitle').textContent = esPendiente
+      ? 'Confirmaremos tu reserva al recibir la transferencia. Usa la referencia como concepto.'
+      : 'Tu reserva ha sido procesada correctamente.';
+
+    document.getElementById('r-ref').textContent = referencia;
+    document.getElementById('r-fecha').textContent = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
+    document.getElementById('r-metodo').textContent = metodo;
+    document.getElementById('r-estado').textContent = estado;
+    document.getElementById('r-cliente').textContent = `${c.nombre} ${c.apellidos}`;
+    document.getElementById('r-documento').textContent = c.documento;
+    document.getElementById('r-email').textContent = c.email;
+    document.getElementById('r-paquete').textContent = p.nombre;
+    document.getElementById('r-fechas').textContent = `${p.salida} → ${p.regreso}`;
+    document.getElementById('r-viajeros').textContent = `${adultosActual} ${adultosActual === 1 ? 'adulto' : 'adultos'}`;
+    document.getElementById('r-desglose').innerHTML = desglose(paqueteActual, adultosActual)
+      .map(l => `<div class="receipt-line"><span>${l.concepto}</span><span>${eur(l.importe)}</span></div>`)
+      .join('');
+    document.getElementById('r-total').textContent = eur(totalCents(paqueteActual, adultosActual));
+
+    document.getElementById('payment-form-view').style.display = 'none';
+    document.getElementById('summary-selectors').style.display = 'none';
+    document.getElementById('success-screen').classList.add('visible');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ============================================================
+  // Modal de términos y privacidad
+  // ============================================================
+  const TERMINOS = `
+    <p><strong>1. Objeto.</strong> Las presentes condiciones regulan la contratación de paquetes turísticos ofrecidos por Viajes Horizonte S.L. (CIF B-12345678).</p>
+    <p><strong>2. Precio y pago.</strong> El precio incluye los conceptos detallados en el desglose de la reserva. El pago puede realizarse con tarjeta, PayPal o transferencia bancaria. La reserva por transferencia queda confirmada al recibirse el importe íntegro.</p>
+    <p><strong>3. Cancelación.</strong> Cancelación gratuita hasta 48 horas antes de la salida. Pasado ese plazo se aplicará un cargo del 25 % del importe total.</p>
+    <p><strong>4. Modificaciones.</strong> Los cambios de fechas o viajeros están sujetos a disponibilidad y pueden conllevar diferencias de tarifa.</p>
+    <p><strong>5. Documentación.</strong> Es responsabilidad del viajero disponer de documentación válida (DNI, pasaporte, visados) para el destino contratado.</p>`;
+
+  const PRIVACIDAD = `
+    <p><strong>Responsable:</strong> Viajes Horizonte S.L. Los datos facilitados se utilizan exclusivamente para gestionar la reserva, emitir la factura y comunicar información relativa al viaje.</p>
+    <p><strong>Pagos:</strong> los datos de tarjeta se procesan directamente por la pasarela de pago certificada PCI-DSS; Viajes Horizonte no almacena números de tarjeta.</p>
+    <p><strong>Derechos:</strong> puedes ejercer tus derechos de acceso, rectificación y supresión escribiendo a privacidad@viajeshorizonte.example.</p>`;
+
+  const backdrop = document.getElementById('modal-backdrop');
+
+  function abrirModal(titulo, html) {
+    document.getElementById('modal-title').textContent = titulo;
+    document.getElementById('modal-body').innerHTML = html;
+    backdrop.classList.add('visible');
+  }
+
+  document.getElementById('open-terms').addEventListener('click', e => { e.preventDefault(); abrirModal('Términos y condiciones', TERMINOS); });
+  document.getElementById('open-terms-footer').addEventListener('click', e => { e.preventDefault(); abrirModal('Términos y condiciones', TERMINOS); });
+  document.getElementById('open-privacy').addEventListener('click', e => { e.preventDefault(); abrirModal('Política de privacidad', PRIVACIDAD); });
+  document.getElementById('modal-close').addEventListener('click', () => backdrop.classList.remove('visible'));
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.classList.remove('visible'); });
+
+  renderResumen();
+</script>
+
+</body>
+</html>
