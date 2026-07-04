@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administración — Viajes Horizonte</title>
+<style>
+  :root {
+    --primary: #0e7490;
+    --primary-dark: #155e75;
+    --accent: #f59e0b;
+    --bg: #f1f5f9;
+    --surface: #ffffff;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --error: #dc2626;
+    --success: #16a34a;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    color: #fff;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .logo { font-size: 1.35rem; font-weight: 700; letter-spacing: 0.5px; }
+  .logo span { color: var(--accent); }
+  .logo small { font-size: 0.8rem; font-weight: 400; opacity: 0.85; margin-left: 0.5rem; }
+
+  .header-actions { display: flex; gap: 0.75rem; align-items: center; }
+  .header-actions a, .header-actions button {
+    font-size: 0.85rem;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
+
+  .field { margin-bottom: 1rem; }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; }
+
+  input {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: var(--surface);
+  }
+  input:focus { outline: none; border-color: var(--primary); }
+  input.invalid { border-color: var(--error); }
+  input:disabled { background: var(--bg); color: var(--text-muted); }
+
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .row .field { flex: 1; min-width: 130px; }
+
+  .btn {
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn:hover { background: var(--primary-dark); }
+  .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+  .btn.secondary {
+    background: var(--surface);
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+  }
+  .btn.danger {
+    background: var(--surface);
+    color: var(--error);
+    border: 1.5px solid var(--error);
+  }
+
+  .msg {
+    display: none;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+  }
+  .msg.visible { display: block; }
+  .msg.error { background: #fef2f2; border: 1px solid #fecaca; color: var(--error); }
+  .msg.ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: var(--success); }
+
+  .mode-banner {
+    display: none;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+  .mode-banner.visible { display: block; }
+
+  /* Paquetes */
+  .paquete {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+
+  .paquete-head {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    background: var(--surface);
+  }
+  .paquete-head:hover { background: #f8fafc; }
+
+  .paquete-icon {
+    font-size: 1.5rem;
+    background: #ecfeff;
+    border-radius: 10px;
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .paquete-title { flex: 1; }
+  .paquete-title .nombre { font-weight: 700; }
+  .paquete-title .meta { color: var(--text-muted); font-size: 0.83rem; margin-top: 0.15rem; }
+  .paquete-total { font-weight: 700; white-space: nowrap; }
+  .paquete-chevron { color: var(--text-muted); transition: transform 0.15s; }
+
+  .paquete-body {
+    display: none;
+    padding: 1.25rem;
+    border-top: 1px solid var(--border);
+    background: #fcfdfe;
+  }
+  .paquete.abierto .paquete-body { display: block; }
+  .paquete.abierto .paquete-chevron { transform: rotate(90deg); }
+
+  .precios-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin: 0.5rem 0 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--border);
+  }
+
+  .paquete-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .total-preview { margin-left: auto; font-size: 0.9rem; color: var(--text-muted); }
+  .total-preview strong { color: var(--text); }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    padding: 2rem 1rem;
+  }
+
+  #login-view, #panel-view { display: none; }
+  #login-view.visible, #panel-view.visible { display: block; }
+  #login-view .card { max-width: 420px; margin: 3rem auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">✈️ Viajes <span>Horizonte</span><small>· Administración</small></div>
+  <div class="header-actions">
+    <a href="pagos.html">Ver página de pagos</a>
+    <button type="button" id="logout-btn" style="display:none">Cerrar sesión</button>
+  </div>
+</header>
+
+<main>
+  <!-- Vista de login -->
+  <div id="login-view">
+    <div class="card">
+      <h1>Acceso restringido</h1>
+      <p class="subtitle">Introduce la contraseña de administración.</p>
+      <form id="login-form">
+        <div class="field">
+          <label for="password">Contraseña</label>
+          <input type="password" id="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn" style="width:100%">Entrar</button>
+        <div class="msg error" id="login-error"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Vista del panel -->
+  <div id="panel-view">
+    <div class="card">
+      <h1>Paquetes de viaje</h1>
+      <p class="subtitle">Edita los planes y precios que se muestran y se cobran en la página de pagos.</p>
+
+      <div class="mode-banner" id="mode-banner">
+        ⚠️ Modo demostración: no hay servidor con panel de administración configurado.
+        Los cambios se guardan solo en este navegador (localStorage) para que puedas probar el flujo.
+      </div>
+
+      <div id="paquetes-lista"></div>
+
+      <div class="paquete-actions">
+        <button type="button" class="btn secondary" id="nuevo-btn">＋ Añadir paquete</button>
+      </div>
+      <div class="msg" id="global-msg"></div>
+    </div>
+  </div>
+</main>
+
+<footer>© 2026 Viajes Horizonte S.L. · Panel de administración</footer>
+
+<script>
+  'use strict';
+
+  const fmtEUR = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+  const eur = cents => fmtEUR.format(cents / 100);
+
+  const PRECIOS_LABELS = {
+    vueloPorPersona: 'Vuelo por persona',
+    hotelPorNoche: 'Hotel por noche',
+    traslados: 'Traslados (por reserva)',
+    seguroPorPersona: 'Seguro por persona',
+    tasasPorPersona: 'Tasas por persona'
+  };
+
+  const LS_CATALOGO = 'vh-catalogo';
+
+  // Catálogo de ejemplo para el modo demo sin servidor.
+  const CATALOGO_DEMO = {
+    'cancun': {
+      nombre: 'Cancún — Todo incluido', icono: '🏝️', hotel: 'Hotel Playa Azul ★★★★',
+      noches: 7, salida: '15 ago 2026', regreso: '22 ago 2026',
+      precios: { vueloPorPersona: 36000, hotelPorNoche: 14000, traslados: 6000, seguroPorPersona: 2250, tasasPorPersona: 2100 }
+    },
+    'riviera-maya': {
+      nombre: 'Riviera Maya — Aventura y playa', icono: '🐠', hotel: 'Resort Xcaret Coral ★★★★★',
+      noches: 9, salida: '5 sep 2026', regreso: '14 sep 2026',
+      precios: { vueloPorPersona: 41000, hotelPorNoche: 17500, traslados: 7000, seguroPorPersona: 2550, tasasPorPersona: 2400 }
+    },
+    'patagonia': {
+      nombre: 'Patagonia — Glaciares y montañas', icono: '🏔️', hotel: 'Lodge Fitz Roy ★★★★',
+      noches: 10, salida: '3 nov 2026', regreso: '13 nov 2026',
+      precios: { vueloPorPersona: 78000, hotelPorNoche: 16000, traslados: 9000, seguroPorPersona: 3100, tasasPorPersona: 3300 }
+    }
+  };
+
+  let modoReal = false;      // hay servidor con ADMIN_PASSWORD
+  let token = sessionStorage.getItem('vh-admin-token') || '';
+  let catalogo = {};
+
+  const loginView = document.getElementById('login-view');
+  const panelView = document.getElementById('panel-view');
+  const globalMsg = document.getElementById('global-msg');
+
+  function mostrarMsg(texto, tipo) {
+    globalMsg.textContent = texto;
+    globalMsg.className = 'msg visible ' + tipo;
+    clearTimeout(mostrarMsg._t);
+    mostrarMsg._t = setTimeout(() => globalMsg.classList.remove('visible'), 4000);
+  }
+
+  function totalCents(p, adultos) {
+    return p.precios.vueloPorPersona * adultos +
+      p.precios.hotelPorNoche * p.noches +
+      p.precios.traslados +
+      p.precios.seguroPorPersona * adultos +
+      p.precios.tasasPorPersona * adultos;
+  }
+
+  // ------------------------------------------------------------
+  // Inicialización: detectar servidor y modo
+  // ------------------------------------------------------------
+  async function init() {
+    try {
+      const res = await fetch('/api/config');
+      if (!res.ok) throw new Error();
+      const cfg = await res.json();
+      modoReal = Boolean(cfg.adminHabilitado);
+    } catch { modoReal = false; }
+
+    if (modoReal) {
+      if (token) {
+        // Comprueba que el token siga siendo válido con una operación inocua.
+        const ok = await cargarCatalogo();
+        if (ok) return mostrarPanel();
+        token = '';
+        sessionStorage.removeItem('vh-admin-token');
+      }
+      loginView.classList.add('visible');
+    } else {
+      document.getElementById('mode-banner').classList.add('visible');
+      catalogo = JSON.parse(localStorage.getItem(LS_CATALOGO) || 'null') || structuredClone(CATALOGO_DEMO);
+      mostrarPanel();
+    }
+  }
+
+  async function cargarCatalogo() {
+    try {
+      const res = await fetch('/api/catalogo');
+      if (!res.ok) return false;
+      catalogo = await res.json();
+      return true;
+    } catch { return false; }
+  }
+
+  function mostrarPanel() {
+    loginView.classList.remove('visible');
+    panelView.classList.add('visible');
+    document.getElementById('logout-btn').style.display = modoReal ? 'inline-block' : 'none';
+    renderLista();
+  }
+
+  // ------------------------------------------------------------
+  // Login
+  // ------------------------------------------------------------
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById('login-error');
+    errorBox.classList.remove('visible');
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: document.getElementById('password').value })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error de acceso.');
+      token = data.token;
+      sessionStorage.setItem('vh-admin-token', token);
+      await cargarCatalogo();
+      mostrarPanel();
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.classList.add('visible');
+    }
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    sessionStorage.removeItem('vh-admin-token');
+    location.reload();
+  });
+
+  // ------------------------------------------------------------
+  // Guardado (servidor o localStorage según el modo)
+  // ------------------------------------------------------------
+  async function guardarPaquete(id, paquete) {
+    if (modoReal) {
+      const res = await fetch('/api/admin/catalogo/' + encodeURIComponent(id), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(paquete)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'No se pudo guardar.');
+      catalogo[id] = data.paquete;
+    } else {
+      catalogo[id] = paquete;
+      localStorage.setItem(LS_CATALOGO, JSON.stringify(catalogo));
+    }
+  }
+
+  async function borrarPaquete(id) {
+    if (Object.keys(catalogo).length === 1) {
+      throw new Error('No se puede borrar el último paquete del catálogo.');
+    }
+    if (modoReal) {
+      const res = await fetch('/api/admin/catalogo/' + encodeURIComponent(id), {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'No se pudo borrar.');
+    } else {
+      localStorage.setItem(LS_CATALOGO, JSON.stringify(catalogo));
+    }
+    delete catalogo[id];
+    if (!modoReal) localStorage.setItem(LS_CATALOGO, JSON.stringify(catalogo));
+  }
+
+  // ------------------------------------------------------------
+  // Render de la lista de paquetes
+  // ------------------------------------------------------------
+  function slug(texto) {
+    return texto.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'paquete';
+  }
+
+  function renderLista() {
+    const lista = document.getElementById('paquetes-lista');
+    lista.innerHTML = '';
+    for (const [id, p] of Object.entries(catalogo)) {
+      lista.appendChild(crearFicha(id, p, false));
+    }
+  }
+
+  function crearFicha(id, p, esNuevo) {
+    const div = document.createElement('div');
+    div.className = 'paquete' + (esNuevo ? ' abierto' : '');
+
+    const precioInputs = Object.keys(PRECIOS_LABELS).map(campo => `
+      <div class="field">
+        <label>${PRECIOS_LABELS[campo]} (€)</label>
+        <input type="number" min="0" step="0.01" data-precio="${campo}" value="${(p.precios[campo] / 100).toFixed(2)}">
+      </div>`).join('');
+
+    div.innerHTML = `
+      <div class="paquete-head">
+        <div class="paquete-icon">${p.icono}</div>
+        <div class="paquete-title">
+          <div class="nombre">${p.nombre}</div>
+          <div class="meta">${id} · ${p.noches} noches · ${p.hotel}</div>
+        </div>
+        <div class="paquete-total">${eur(totalCents(p, 2))} <small style="font-weight:400;color:var(--text-muted)">/ 2 adultos</small></div>
+        <div class="paquete-chevron">›</div>
+      </div>
+      <div class="paquete-body">
+        <div class="row">
+          <div class="field" style="flex:2">
+            <label>Nombre del paquete</label>
+            <input type="text" data-campo="nombre" value="${p.nombre.replace(/"/g, '&quot;')}">
+          </div>
+          <div class="field" style="max-width:110px">
+            <label>Icono</label>
+            <input type="text" data-campo="icono" value="${p.icono}" maxlength="4">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex:2">
+            <label>Hotel</label>
+            <input type="text" data-campo="hotel" value="${p.hotel.replace(/"/g, '&quot;')}">
+          </div>
+          <div class="field" style="max-width:110px">
+            <label>Noches</label>
+            <input type="number" min="1" max="60" data-campo="noches" value="${p.noches}">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Fecha de salida</label>
+            <input type="text" data-campo="salida" value="${p.salida}" placeholder="15 ago 2026">
+          </div>
+          <div class="field">
+            <label>Fecha de regreso</label>
+            <input type="text" data-campo="regreso" value="${p.regreso}" placeholder="22 ago 2026">
+          </div>
+          <div class="field">
+            <label>Identificador (URL)</label>
+            <input type="text" data-campo="id" value="${id}" ${esNuevo ? '' : 'disabled'}>
+          </div>
+        </div>
+        <div class="precios-title">Precios (se cobran desde el servidor)</div>
+        <div class="row">${precioInputs}</div>
+        <div class="paquete-actions">
+          <button type="button" class="btn guardar-btn">Guardar cambios</button>
+          ${esNuevo ? '' : '<button type="button" class="btn danger borrar-btn">Eliminar</button>'}
+          <div class="total-preview">Total 2 adultos: <strong class="total-live">${eur(totalCents(p, 2))}</strong></div>
+        </div>
+      </div>`;
+
+    div.querySelector('.paquete-head').addEventListener('click', () => div.classList.toggle('abierto'));
+
+    const leerFormulario = () => {
+      const val = c => div.querySelector(`[data-campo="${c}"]`).value.trim();
+      const precios = {};
+      for (const campo of Object.keys(PRECIOS_LABELS)) {
+        precios[campo] = Math.round(parseFloat(div.querySelector(`[data-precio="${campo}"]`).value || '0') * 100);
+      }
+      return {
+        id: slug(val('id') || val('nombre')),
+        paquete: {
+          nombre: val('nombre'), icono: val('icono') || '✈️', hotel: val('hotel'),
+          noches: parseInt(val('noches'), 10) || 0,
+          salida: val('salida'), regreso: val('regreso'), precios
+        }
+      };
+    };
+
+    // Vista previa del total en vivo
+    div.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => {
+      const { paquete } = leerFormulario();
+      div.querySelector('.total-live').textContent = eur(totalCents(paquete, 2));
+    }));
+
+    div.querySelector('.guardar-btn').addEventListener('click', async () => {
+      const btn = div.querySelector('.guardar-btn');
+      const { id: nuevoId, paquete } = leerFormulario();
+
+      // Validación en el cliente (el servidor revalida siempre)
+      let valido = true;
+      for (const campo of ['nombre', 'hotel', 'salida', 'regreso']) {
+        const inp = div.querySelector(`[data-campo="${campo}"]`);
+        const ok = inp.value.trim().length > 0;
+        inp.classList.toggle('invalid', !ok);
+        valido = valido && ok;
+      }
+      const nochesInp = div.querySelector('[data-campo="noches"]');
+      const nochesOk = paquete.noches >= 1 && paquete.noches <= 60;
+      nochesInp.classList.toggle('invalid', !nochesOk);
+      valido = valido && nochesOk;
+      for (const campo of Object.keys(PRECIOS_LABELS)) {
+        const inp = div.querySelector(`[data-precio="${campo}"]`);
+        const ok = Number.isInteger(paquete.precios[campo]) && paquete.precios[campo] >= 0;
+        inp.classList.toggle('invalid', !ok);
+        valido = valido && ok;
+      }
+      if (!valido) return mostrarMsg('Revisa los campos marcados en rojo.', 'error');
+      if (esNuevo && catalogo[nuevoId]) return mostrarMsg(`Ya existe un paquete con el identificador "${nuevoId}".`, 'error');
+
+      btn.disabled = true;
+      btn.textContent = 'Guardando…';
+      try {
+        await guardarPaquete(esNuevo ? nuevoId : id, paquete);
+        mostrarMsg(`Paquete "${paquete.nombre}" guardado.`, 'ok');
+        renderLista();
+      } catch (err) {
+        mostrarMsg(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Guardar cambios';
+      }
+    });
+
+    const borrarBtn = div.querySelector('.borrar-btn');
+    if (borrarBtn) {
+      borrarBtn.addEventListener('click', async () => {
+        if (!confirm(`¿Eliminar el paquete "${p.nombre}"? Esta acción no se puede deshacer.`)) return;
+        try {
+          await borrarPaquete(id);
+          mostrarMsg('Paquete eliminado.', 'ok');
+          renderLista();
+        } catch (err) {
+          mostrarMsg(err.message, 'error');
+        }
+      });
+    }
+
+    return div;
+  }
+
+  document.getElementById('nuevo-btn').addEventListener('click', () => {
+    const vacio = {
+      nombre: '', icono: '✈️', hotel: '', noches: 7, salida: '', regreso: '',
+      precios: { vueloPorPersona: 0, hotelPorNoche: 0, traslados: 0, seguroPorPersona: 0, tasasPorPersona: 0 }
+    };
+    const ficha = crearFicha('', vacio, true);
+    document.getElementById('paquetes-lista').appendChild(ficha);
+    ficha.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  init();
+</script>
+
+</body>
+</html>

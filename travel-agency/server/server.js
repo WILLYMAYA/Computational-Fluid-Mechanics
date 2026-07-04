@@ -14,12 +14,13 @@ const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { CATALOGO, totalCents } = require('./catalogo');
+const { leerCatalogo, guardarPaquete, borrarPaquete, totalCents } = require('./catalogo');
 
 const PORT = process.env.PORT || 3000;
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 
 const stripe = STRIPE_SECRET_KEY ? require('stripe')(STRIPE_SECRET_KEY) : null;
 
@@ -96,12 +97,72 @@ app.use(express.static(path.join(__dirname, '..')));
 
 // Configuración pública para el navegador.
 app.get('/api/config', (req, res) => {
-  res.json({ publishableKey: STRIPE_PUBLISHABLE_KEY || null });
+  res.json({
+    publishableKey: STRIPE_PUBLISHABLE_KEY || null,
+    adminHabilitado: Boolean(ADMIN_PASSWORD)
+  });
 });
 
-// Catálogo (por si otro front quiere consumirlo).
+// Catálogo completo (lo consume pagos.html y el panel de administración).
 app.get('/api/catalogo', (req, res) => {
-  res.json(CATALOGO);
+  res.json(leerCatalogo());
+});
+
+// ---------------------------------------------------------------
+// Administración: login por contraseña (ADMIN_PASSWORD en .env) y
+// tokens de sesión en memoria con caducidad.
+// ---------------------------------------------------------------
+const SESIONES_ADMIN = new Map(); // token → caducidad (ms epoch)
+const SESION_DURACION_MS = 8 * 60 * 60 * 1000;
+
+function passwordCorrecta(intento) {
+  const a = Buffer.from(String(intento));
+  const b = Buffer.from(ADMIN_PASSWORD);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+app.post('/api/admin/login', (req, res) => {
+  if (!ADMIN_PASSWORD) {
+    return res.status(503).json({ error: 'El panel de administración no está configurado (falta ADMIN_PASSWORD).' });
+  }
+  const { password } = req.body || {};
+  if (!password || !passwordCorrecta(password)) {
+    return res.status(401).json({ error: 'Contraseña incorrecta.' });
+  }
+  const token = crypto.randomBytes(32).toString('hex');
+  SESIONES_ADMIN.set(token, Date.now() + SESION_DURACION_MS);
+  res.json({ token });
+});
+
+function requiereAdmin(req, res, next) {
+  if (!ADMIN_PASSWORD) {
+    return res.status(503).json({ error: 'El panel de administración no está configurado (falta ADMIN_PASSWORD).' });
+  }
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const caducidad = SESIONES_ADMIN.get(token);
+  if (!caducidad || caducidad < Date.now()) {
+    SESIONES_ADMIN.delete(token);
+    return res.status(401).json({ error: 'Sesión no válida o caducada. Vuelve a iniciar sesión.' });
+  }
+  next();
+}
+
+// Crear o actualizar un paquete del catálogo.
+app.put('/api/admin/catalogo/:id', requiereAdmin, (req, res) => {
+  const id = req.params.id;
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id) || id.length > 40) {
+    return res.status(400).json({ error: 'Identificador no válido: usa minúsculas, números y guiones (p. ej. "riviera-maya").' });
+  }
+  const { paquete, error } = guardarPaquete(id, req.body);
+  if (error) return res.status(400).json({ error });
+  res.json({ id, paquete });
+});
+
+// Borrar un paquete del catálogo.
+app.delete('/api/admin/catalogo/:id', requiereAdmin, (req, res) => {
+  const { error } = borrarPaquete(req.params.id);
+  if (error) return res.status(error === 'Paquete no encontrado.' ? 404 : 400).json({ error });
+  res.json({ ok: true });
 });
 
 // Crear pedido. Con método "tarjeta" crea además el PaymentIntent
@@ -110,8 +171,9 @@ app.post('/api/pedidos', async (req, res) => {
   try {
     const { paquete, adultos, metodo, cliente } = req.body || {};
 
+    const catalogo = leerCatalogo();
     const numAdultos = parseInt(adultos, 10);
-    if (!CATALOGO[paquete]) return res.status(400).json({ error: 'Paquete no válido.' });
+    if (!catalogo[paquete]) return res.status(400).json({ error: 'Paquete no válido.' });
     if (!Number.isInteger(numAdultos) || numAdultos < 1 || numAdultos > 4) {
       return res.status(400).json({ error: 'Número de viajeros no válido.' });
     }
@@ -164,7 +226,7 @@ app.post('/api/pedidos', async (req, res) => {
       const intent = await stripe.paymentIntents.create({
         amount: importe,
         currency: 'eur',
-        description: `${CATALOGO[paquete].nombre} · ${referencia}`,
+        description: `${catalogo[paquete].nombre} · ${referencia}`,
         receipt_email: pedido.cliente.email,
         metadata: { referencia, paquete, adultos: String(numAdultos) }
       });
@@ -222,4 +284,7 @@ app.listen(PORT, () => {
   console.log(stripe
     ? 'Stripe configurado: pagos con tarjeta habilitados.'
     : 'Stripe NO configurado (falta STRIPE_SECRET_KEY): la página funcionará en modo demostración.');
+  console.log(ADMIN_PASSWORD
+    ? `Panel de administración habilitado: http://localhost:${PORT}/admin.html`
+    : 'Panel de administración NO configurado (falta ADMIN_PASSWORD).');
 });

@@ -622,7 +622,8 @@
 
 <footer>
   © 2026 Viajes Horizonte S.L. · CIF B-12345678 · C/ del Mar 24, 28001 Madrid ·
-  <a href="#" id="open-terms-footer" style="color:var(--text-muted)">Términos y condiciones</a>
+  <a href="#" id="open-terms-footer" style="color:var(--text-muted)">Términos y condiciones</a> ·
+  <a href="admin.html" style="color:var(--text-muted)">Admin</a>
 </footer>
 
 <!-- Modal de términos / privacidad -->
@@ -638,12 +639,12 @@
   'use strict';
 
   // ============================================================
-  // Catálogo de paquetes.
-  // IMPORTANTE: debe mantenerse sincronizado con el catálogo del
-  // servidor (server/catalogo.js), que es la fuente de verdad
-  // para los importes que se cobran.
+  // Catálogo de paquetes. Se carga del servidor (/api/catalogo,
+  // editable desde admin.html); este objeto embebido solo es el
+  // fallback para el modo demostración sin servidor, donde además
+  // se aplican los cambios guardados por admin.html en localStorage.
   // ============================================================
-  const CATALOGO = {
+  let CATALOGO = {
     'cancun': {
       nombre: 'Cancún — Todo incluido',
       icono: '🏝️',
@@ -715,20 +716,40 @@
   // pagos.html?paquete=riviera-maya&adultos=3)
   // ============================================================
   const urlParams = new URLSearchParams(location.search);
-  let paqueteActual = CATALOGO[urlParams.get('paquete')] ? urlParams.get('paquete') : 'cancun';
+  let paqueteActual = 'cancun';
   let adultosActual = Math.min(4, Math.max(1, parseInt(urlParams.get('adultos'), 10) || 2));
 
   const paqueteSelect = document.getElementById('paquete-select');
   const adultosSelect = document.getElementById('adultos-select');
 
-  for (const [id, p] of Object.entries(CATALOGO)) {
-    const opt = document.createElement('option');
-    opt.value = id;
-    opt.textContent = p.nombre;
-    paqueteSelect.appendChild(opt);
+  async function cargarCatalogo() {
+    try {
+      const res = await fetch('/api/catalogo');
+      if (res.ok) {
+        CATALOGO = await res.json();
+        return;
+      }
+    } catch { /* sin servidor: modo demo */ }
+    // En modo demo se aplican los cambios hechos desde admin.html.
+    const local = localStorage.getItem('vh-catalogo');
+    if (local) {
+      try { CATALOGO = JSON.parse(local); } catch { /* fallback embebido */ }
+    }
   }
-  paqueteSelect.value = paqueteActual;
-  adultosSelect.value = String(adultosActual);
+
+  function poblarSelectorPaquetes() {
+    paqueteSelect.innerHTML = '';
+    for (const [id, p] of Object.entries(CATALOGO)) {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = p.nombre;
+      paqueteSelect.appendChild(opt);
+    }
+    const deUrl = urlParams.get('paquete');
+    paqueteActual = CATALOGO[deUrl] ? deUrl : Object.keys(CATALOGO)[0];
+    paqueteSelect.value = paqueteActual;
+    adultosSelect.value = String(adultosActual);
+  }
 
   function renderResumen() {
     const p = CATALOGO[paqueteActual];
@@ -1087,7 +1108,12 @@
   document.getElementById('modal-close').addEventListener('click', () => backdrop.classList.remove('visible'));
   backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.classList.remove('visible'); });
 
-  renderResumen();
+  // Arranque: cargar el catálogo (servidor → localStorage → embebido)
+  // y renderizar. La pasarela ya se inicializa en paralelo arriba.
+  cargarCatalogo().then(() => {
+    poblarSelectorPaquetes();
+    renderResumen();
+  });
 </script>
 
 </body>

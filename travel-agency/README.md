@@ -7,10 +7,11 @@ facturación, selección de paquete y número de viajeros, pago con tarjeta
 ```
 travel-agency/
 ├── pagos.html          Página de pago (front-end, sin dependencias)
+├── admin.html          Panel de administración (paquetes y precios)
 ├── README.md
 └── server/
-    ├── server.js       API de pedidos + integración Stripe + webhook
-    ├── catalogo.js     Catálogo de paquetes y cálculo de importes
+    ├── server.js       API de pedidos + Stripe + webhook + API admin
+    ├── catalogo.js     Catálogo persistente y cálculo de importes
     ├── package.json
     └── .env.example    Plantilla de configuración
 ```
@@ -52,6 +53,24 @@ Con las claves de prueba puedes pagar con la tarjeta `4242 4242 4242 4242`
 (cualquier fecha futura y CVC). Para cobrar de verdad, activa la cuenta de
 Stripe y sustituye las claves de prueba por las reales (`sk_live_...`).
 
+## Panel de administración
+
+En <http://localhost:3000/admin.html> puedes editar los paquetes de viaje y
+sus precios sin tocar código: nombre, icono, hotel, noches, fechas y los cinco
+componentes del precio (en euros), con vista previa del total. También puedes
+añadir paquetes nuevos y eliminarlos.
+
+- Se protege con la contraseña `ADMIN_PASSWORD` del `.env`; sin ella el panel
+  queda deshabilitado en el servidor.
+- El inicio de sesión devuelve un token temporal (8 h) que el navegador guarda
+  en `sessionStorage`.
+- El catálogo editado se guarda en `server/data/catalogo.json`, que es la
+  fuente de verdad de los importes que se cobran; la página de pagos lo lee
+  de `/api/catalogo` al cargar. Los pedidos ya creados conservan su importe.
+- **Modo demo** (sin servidor o sin `ADMIN_PASSWORD`): el panel avisa con un
+  banner y guarda los cambios en `localStorage` del navegador, y `pagos.html`
+  los lee de ahí — útil para probar el flujo completo sin configurar nada.
+
 ## Seguridad
 
 - Los **importes se calculan siempre en el servidor** (`catalogo.js`); el
@@ -69,21 +88,25 @@ Stripe y sustituye las claves de prueba por las reales (`sk_live_...`).
 
 | Método | Ruta                              | Descripción                                             |
 |--------|-----------------------------------|---------------------------------------------------------|
-| GET    | `/api/config`                     | Clave publicable de Stripe (o `null` en modo demo)      |
-| GET    | `/api/catalogo`                   | Catálogo de paquetes                                    |
+| GET    | `/api/config`                     | Clave publicable de Stripe y si el admin está habilitado |
+| GET    | `/api/catalogo`                   | Catálogo de paquetes (persistido en `data/catalogo.json`) |
 | POST   | `/api/pedidos`                    | Crea un pedido; con tarjeta devuelve el `clientSecret`  |
 | POST   | `/api/pedidos/:ref/confirmar`     | Verifica el pago contra Stripe y actualiza el estado    |
 | GET    | `/api/pedidos/:ref`               | Estado de un pedido (sin datos personales)              |
 | POST   | `/api/webhook`                    | Webhook de Stripe (confirmación autoritativa)           |
+| POST   | `/api/admin/login`                | Inicia sesión de administración (devuelve token 8 h)    |
+| PUT    | `/api/admin/catalogo/:id`         | Crea o actualiza un paquete (requiere token)            |
+| DELETE | `/api/admin/catalogo/:id`         | Elimina un paquete (requiere token)                     |
 
 Los pedidos se guardan en `server/data/pedidos.json`; para volumen real,
 sustituir por una base de datos.
 
 ## Personalización
 
-- **Paquetes y precios**: edita `server/catalogo.js` (fuente de verdad para el
-  cobro) y el objeto `CATALOGO` de `pagos.html` (visualización). Mantén ambos
-  sincronizados.
+- **Paquetes y precios**: desde el panel de administración (`admin.html`).
+  Los paquetes de ejemplo iniciales están en `server/catalogo.js`
+  (`CATALOGO_SEMILLA`) y solo se usan la primera vez, para crear
+  `server/data/catalogo.json`.
 - **Datos de la agencia** (nombre, IBAN de transferencias, términos legales):
   búscalos en `pagos.html` y sustitúyelos por los reales antes de publicar.
 - La página acepta parámetros de URL para enlazar desde el catálogo:
