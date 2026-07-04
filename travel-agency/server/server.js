@@ -213,6 +213,13 @@ app.post('/api/pedidos', async (req, res) => {
     if (!Number.isInteger(numAdultos) || numAdultos < 1 || numAdultos > 4) {
       return res.status(400).json({ error: 'Número de viajeros no válido.' });
     }
+    if (['nequi', 'daviplata', 'pse'].includes(metodo)) {
+      // Requieren una pasarela colombiana (Wompi, ePayco o PayU); ver README.
+      // Cuando se configure, este es el punto donde crear la transacción.
+      return res.status(503).json({
+        error: 'Nequi, Daviplata y PSE aún no están habilitados: falta configurar la pasarela colombiana en el servidor (consulta el README).'
+      });
+    }
     if (!['tarjeta', 'transferencia'].includes(metodo)) {
       return res.status(400).json({ error: 'Método de pago no válido.' });
     }

@@ -470,6 +470,9 @@
           <button type="button" class="method-btn active" data-method="tarjeta">💳 Tarjeta</button>
           <button type="button" class="method-btn" data-method="paypal">🅿️ PayPal</button>
           <button type="button" class="method-btn" data-method="transferencia">🏦 Transferencia</button>
+          <button type="button" class="method-btn" data-method="nequi">📱 Nequi</button>
+          <button type="button" class="method-btn" data-method="daviplata">📲 Daviplata</button>
+          <button type="button" class="method-btn" data-method="pse">🏛️ PSE</button>
         </div>
 
         <!-- Tarjeta: campos propios (modo demo) -->
@@ -534,6 +537,69 @@
             <strong>Concepto:</strong> tu referencia de reserva (se genera al confirmar)<br>
             <strong>Importe:</strong> <span class="importe-transferencia">—</span>
           </div>
+        </div>
+
+        <!-- Nequi -->
+        <div class="alt-method" id="nequi-method">
+          <p>Paga con tu cuenta Nequi: introduce el celular asociado y recibirás una notificación en la app para aprobar el pago.</p>
+          <div class="field">
+            <label for="nequi-celular">Celular Nequi</label>
+            <input type="tel" id="nequi-celular" placeholder="300 123 4567" inputmode="numeric" maxlength="12">
+            <p class="error-msg">Introduce un celular colombiano válido (10 dígitos, empieza por 3).</p>
+          </div>
+        </div>
+
+        <!-- Daviplata -->
+        <div class="alt-method" id="daviplata-method">
+          <p>Paga con tu cuenta Daviplata: introduce el celular asociado y confirma la operación desde la app.</p>
+          <div class="field">
+            <label for="daviplata-celular">Celular Daviplata</label>
+            <input type="tel" id="daviplata-celular" placeholder="300 123 4567" inputmode="numeric" maxlength="12">
+            <p class="error-msg">Introduce un celular colombiano válido (10 dígitos, empieza por 3).</p>
+          </div>
+        </div>
+
+        <!-- PSE -->
+        <div class="alt-method" id="pse-method">
+          <p>Débito bancario por PSE: serás redirigido al portal de tu banco para autorizar el pago.</p>
+          <div class="field">
+            <label for="pse-banco">Banco</label>
+            <select id="pse-banco">
+              <option value="">Selecciona tu banco</option>
+              <option>Bancolombia</option>
+              <option>Banco de Bogotá</option>
+              <option>Davivienda</option>
+              <option>BBVA Colombia</option>
+              <option>Banco de Occidente</option>
+              <option>Banco Popular</option>
+              <option>Scotiabank Colpatria</option>
+              <option>Banco AV Villas</option>
+              <option>Banco Caja Social</option>
+              <option>Banco Agrario</option>
+              <option>Banco Falabella</option>
+              <option>Itaú</option>
+            </select>
+            <p class="error-msg">Selecciona tu banco.</p>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="pse-tipo-persona">Tipo de persona</label>
+              <select id="pse-tipo-persona">
+                <option value="natural" selected>Natural</option>
+                <option value="juridica">Jurídica</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="pse-tipo-doc">Tipo de documento</label>
+              <select id="pse-tipo-doc">
+                <option value="CC" selected>Cédula de ciudadanía</option>
+                <option value="CE">Cédula de extranjería</option>
+                <option value="NIT">NIT</option>
+                <option value="PP">Pasaporte</option>
+              </select>
+            </div>
+          </div>
+          <p style="font-size:0.85rem">Se usará el número de documento indicado en el paso 1.</p>
         </div>
 
         <!-- 4. Términos y pago -->
@@ -775,7 +841,10 @@
     const labels = {
       tarjeta: `Pagar ${total}`,
       paypal: 'Continuar con PayPal',
-      transferencia: 'Confirmar reserva por transferencia'
+      transferencia: 'Confirmar reserva por transferencia',
+      nequi: `Pagar ${total} con Nequi`,
+      daviplata: `Pagar ${total} con Daviplata`,
+      pse: `Pagar ${total} con PSE`
     };
     document.getElementById('pay-btn').textContent = labels[metodoActual];
   }
@@ -787,6 +856,7 @@
   // Métodos de pago
   // ============================================================
   let metodoActual = 'tarjeta';
+  const METODOS = ['tarjeta', 'paypal', 'transferencia', 'nequi', 'daviplata', 'pse'];
   const methodButtons = document.querySelectorAll('.method-btn');
 
   methodButtons.forEach(btn => {
@@ -794,12 +864,57 @@
       methodButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       metodoActual = btn.dataset.method;
-      document.getElementById('tarjeta-method').style.display = metodoActual === 'tarjeta' ? 'block' : 'none';
-      document.getElementById('paypal-method').style.display = metodoActual === 'paypal' ? 'block' : 'none';
-      document.getElementById('transferencia-method').style.display = metodoActual === 'transferencia' ? 'block' : 'none';
+      for (const m of METODOS) {
+        document.getElementById(m + '-method').style.display = m === metodoActual ? 'block' : 'none';
+      }
       actualizarBotonPago();
     });
   });
+
+  // Solo dígitos en los celulares de Nequi y Daviplata.
+  for (const id of ['nequi-celular', 'daviplata-celular']) {
+    const inp = document.getElementById(id);
+    inp.addEventListener('input', () => {
+      inp.value = inp.value.replace(/\D/g, '').slice(0, 10);
+    });
+  }
+
+  const CELULAR_CO = /^3\d{9}$/;
+
+  // Al elegir banco desaparece el aviso de validación.
+  document.getElementById('pse-banco').addEventListener('change', e => {
+    if (e.target.value) e.target.classList.remove('invalid');
+  });
+
+  function datosPago() {
+    if (metodoActual === 'nequi') return { celular: document.getElementById('nequi-celular').value };
+    if (metodoActual === 'daviplata') return { celular: document.getElementById('daviplata-celular').value };
+    if (metodoActual === 'pse') {
+      return {
+        banco: document.getElementById('pse-banco').value,
+        tipoPersona: document.getElementById('pse-tipo-persona').value,
+        tipoDocumento: document.getElementById('pse-tipo-doc').value
+      };
+    }
+    return {};
+  }
+
+  function validarMetodoPago() {
+    if (metodoActual === 'tarjeta') {
+      return modoReal
+        ? setValidity(campos.holderStripe, campos.holderStripe.value.trim().length >= 3)
+        : validarTarjetaDemo();
+    }
+    if (metodoActual === 'nequi' || metodoActual === 'daviplata') {
+      const inp = document.getElementById(metodoActual + '-celular');
+      return setValidity(inp, CELULAR_CO.test(inp.value));
+    }
+    if (metodoActual === 'pse') {
+      const banco = document.getElementById('pse-banco');
+      return setValidity(banco, banco.value !== '');
+    }
+    return true; // paypal y transferencia no requieren campos propios
+  }
 
   // ============================================================
   // Formateo y validación de la tarjeta (modo demo)
@@ -971,7 +1086,8 @@
         paquete: paqueteActual,
         adultos: adultosActual,
         metodo,
-        cliente: datosCliente()
+        cliente: datosCliente(),
+        datosPago: datosPago()
       })
     });
     if (!res.ok) {
@@ -991,13 +1107,7 @@
       return;
     }
 
-    if (metodoActual === 'tarjeta') {
-      if (modoReal) {
-        if (!setValidity(campos.holderStripe, campos.holderStripe.value.trim().length >= 3)) return;
-      } else if (!validarTarjetaDemo()) {
-        return;
-      }
-    }
+    if (!validarMetodoPago()) return;
 
     payBtn.disabled = true;
     payBtn.textContent = 'Procesando…';
@@ -1025,16 +1135,30 @@
         } else if (metodoActual === 'transferencia') {
           mostrarExito(pedido.referencia, 'Transferencia bancaria', 'Pendiente de recibir transferencia');
         } else {
-          // PayPal requiere configurar la cuenta de comercio (ver README).
-          throw new Error('El pago con PayPal aún no está habilitado. Usa tarjeta o transferencia.');
+          // PayPal, Nequi, Daviplata y PSE requieren configurar su pasarela
+          // (ver README); el servidor los rechaza antes de llegar aquí.
+          throw new Error('Este método de pago aún no está habilitado. Usa tarjeta o transferencia.');
         }
       } else {
         // Modo demostración: simula el procesamiento.
-        await new Promise(r => setTimeout(r, 1200));
+        const espera = {
+          nequi: 'Esperando aprobación en tu app Nequi…',
+          daviplata: 'Esperando aprobación en tu app Daviplata…',
+          pse: 'Conectando con tu banco (PSE)…'
+        };
+        if (espera[metodoActual]) {
+          payBtn.textContent = espera[metodoActual];
+          await new Promise(r => setTimeout(r, 1800));
+        } else {
+          await new Promise(r => setTimeout(r, 1200));
+        }
         const estados = {
           tarjeta: ['Tarjeta', 'Pagado (demo)'],
           paypal: ['PayPal', 'Pagado (demo)'],
-          transferencia: ['Transferencia bancaria', 'Pendiente de recibir transferencia (demo)']
+          transferencia: ['Transferencia bancaria', 'Pendiente de recibir transferencia (demo)'],
+          nequi: ['Nequi', 'Pagado (demo)'],
+          daviplata: ['Daviplata', 'Pagado (demo)'],
+          pse: ['PSE — ' + document.getElementById('pse-banco').value, 'Pagado (demo)']
         };
         mostrarExito(refLocal(), estados[metodoActual][0], estados[metodoActual][1]);
       }

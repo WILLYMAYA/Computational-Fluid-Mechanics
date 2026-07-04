@@ -53,6 +53,27 @@ Con las claves de prueba puedes pagar con la tarjeta `4242 4242 4242 4242`
 (cualquier fecha futura y CVC). Para cobrar de verdad, activa la cuenta de
 Stripe y sustituye las claves de prueba por las reales (`sk_live_...`).
 
+## Métodos de pago colombianos (Nequi, Daviplata y PSE)
+
+La página incluye Nequi y Daviplata (billeteras móviles, con validación del
+celular colombiano) y PSE (débito bancario, con selección de banco, tipo de
+persona y tipo de documento). En **modo demostración** el flujo completo se
+simula, incluida la espera de aprobación en la app o la conexión con el banco.
+
+En **modo real** estos métodos requieren una pasarela colombiana; hasta que se
+configure, el servidor los rechaza con un mensaje claro (HTTP 503). Para
+habilitarlos:
+
+- **Wompi** (<https://wompi.co>, de Bancolombia): soporta Nequi y PSE. Crea la
+  transacción en `POST /api/pedidos` (el punto está marcado con un comentario
+  en `server.js`) y confirma con su webhook de eventos, igual que se hace con
+  Stripe.
+- **ePayco** o **PayU Latam**: soportan PSE y Daviplata.
+- Estas pasarelas procesan en **pesos colombianos (COP)**: para una agencia
+  que venda en Colombia, define los precios del catálogo en COP (los importes
+  son enteros en la unidad mínima de la moneda) y cambia `eur` → `cop` en el
+  formato de `pagos.html` y la moneda de los PaymentIntents en `server.js`.
+
 ## Panel de administración
 
 En <http://localhost:3000/admin.html> puedes editar los paquetes de viaje y
@@ -118,5 +139,8 @@ sustituir por una base de datos.
 
 - **PayPal**: la pestaña existe pero requiere una cuenta de comercio y el SDK
   de PayPal; hasta entonces el servidor la rechaza con un mensaje claro.
+- **Nequi, Daviplata y PSE**: requieren configurar una pasarela colombiana
+  (ver sección anterior); hasta entonces el servidor los rechaza con un
+  mensaje claro.
 - Envío real del recibo por correo (el texto de la página lo anuncia).
 - Sustituir los datos ficticios de la agencia (CIF, IBAN, dirección).
