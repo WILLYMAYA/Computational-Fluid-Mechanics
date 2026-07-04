@@ -115,20 +115,56 @@ app.get('/api/catalogo', (req, res) => {
 const SESIONES_ADMIN = new Map(); // token → caducidad (ms epoch)
 const SESION_DURACION_MS = 8 * 60 * 60 * 1000;
 
+// Limitación de intentos de login por IP: tras MAX_INTENTOS fallidos
+// se bloquea la IP durante VENTANA_MS. Un login correcto limpia el
+// contador. Nota: si el servidor corre detrás de un proxy inverso,
+// añade app.set('trust proxy', 1) para que req.ip sea la IP real.
+const INTENTOS_LOGIN = new Map(); // ip → { fallos, bloqueadoHasta }
+const MAX_INTENTOS = 5;
+const VENTANA_MS = 15 * 60 * 1000;
+
+function limpiarIntentosCaducados() {
+  const ahora = Date.now();
+  for (const [ip, r] of INTENTOS_LOGIN) {
+    if (r.bloqueadoHasta < ahora) INTENTOS_LOGIN.delete(ip);
+  }
+}
+
+function limitarLogin(req, res, next) {
+  limpiarIntentosCaducados();
+  const registro = INTENTOS_LOGIN.get(req.ip);
+  if (registro && registro.fallos >= MAX_INTENTOS) {
+    const minutos = Math.ceil((registro.bloqueadoHasta - Date.now()) / 60000);
+    return res.status(429).json({
+      error: `Demasiados intentos fallidos. Vuelve a intentarlo en ${minutos} min.`
+    });
+  }
+  next();
+}
+
+function registrarLoginFallido(ip) {
+  const registro = INTENTOS_LOGIN.get(ip) || { fallos: 0, bloqueadoHasta: 0 };
+  registro.fallos += 1;
+  registro.bloqueadoHasta = Date.now() + VENTANA_MS;
+  INTENTOS_LOGIN.set(ip, registro);
+}
+
 function passwordCorrecta(intento) {
   const a = Buffer.from(String(intento));
   const b = Buffer.from(ADMIN_PASSWORD);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', limitarLogin, (req, res) => {
   if (!ADMIN_PASSWORD) {
     return res.status(503).json({ error: 'El panel de administración no está configurado (falta ADMIN_PASSWORD).' });
   }
   const { password } = req.body || {};
   if (!password || !passwordCorrecta(password)) {
+    registrarLoginFallido(req.ip);
     return res.status(401).json({ error: 'Contraseña incorrecta.' });
   }
+  INTENTOS_LOGIN.delete(req.ip);
   const token = crypto.randomBytes(32).toString('hex');
   SESIONES_ADMIN.set(token, Date.now() + SESION_DURACION_MS);
   res.json({ token });

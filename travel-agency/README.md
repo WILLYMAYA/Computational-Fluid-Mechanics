@@ -63,7 +63,9 @@ añadir paquetes nuevos y eliminarlos.
 - Se protege con la contraseña `ADMIN_PASSWORD` del `.env`; sin ella el panel
   queda deshabilitado en el servidor.
 - El inicio de sesión devuelve un token temporal (8 h) que el navegador guarda
-  en `sessionStorage`.
+  en `sessionStorage`. El login está limitado a 5 intentos fallidos por IP
+  cada 15 minutos (si sirves detrás de un proxy inverso, activa
+  `app.set('trust proxy', 1)` en `server.js` para que la IP sea la real).
 - El catálogo editado se guarda en `server/data/catalogo.json`, que es la
   fuente de verdad de los importes que se cobran; la página de pagos lo lee
   de `/api/catalogo` al cargar. Los pedidos ya creados conservan su importe.
